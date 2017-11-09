@@ -15,7 +15,7 @@ https://docs.projectcalico.org/v2.6/getting-started/mesos/installation/prerequis
 For simplicity I'm starting a single etcd instance with Docker on my Bootstrap Machine:
 
 ```
-export ETCD_IP=172.31.15.230
+export ETCD_IP=172.31.5.132
 export ETCD_PORT=2379
 ```
 
@@ -34,7 +34,7 @@ The recommendation is to setup an HA cluster: https://coreos.com/etcd/docs/lates
 Install calico manually by starting the Calico Node via Docker on each DC/OS Agent:
 
 ```
-sudo docker rm /calico-node -f | true && sudo docker run -d --restart=always --net=host --privileged --name=calico-node -e FELIX_IGNORELOOSERPF=true -v /lib/modules:/lib/modules -v /var/log/calico:/var/log/calico -v /var/run/calico:/var/run/calico -v /run/docker/plugins:/run/docker/plugins -v /var/run/docker.sock:/var/run/docker.sock -e CALICO_LIBNETWORK_ENABLED=true -e IP=$(/opt/mesosphere/bin/detect_ip) -e HOSTNAME=$(hostname) -e ETCD_ENDPOINTS=http://172.31.15.230:2379 -e ETCD_SCHEME=http quay.io/calico/node:v2.6.2
+sudo docker rm /calico-node -f | true && sudo docker run -d --restart=always --net=host --privileged --name=calico-node -e FELIX_IGNORELOOSERPF=true -v /lib/modules:/lib/modules -v /var/log/calico:/var/log/calico -v /var/run/calico:/var/run/calico -v /run/docker/plugins:/run/docker/plugins -v /var/run/docker.sock:/var/run/docker.sock -e CALICO_LIBNETWORK_ENABLED=true -e IP=$(/opt/mesosphere/bin/detect_ip) -e HOSTNAME=$(hostname) -e ETCD_ENDPOINTS=http://172.31.5.132:2379 -e ETCD_SCHEME=http quay.io/calico/node:v2.6.2
 ```
 
 Download and install the binaries for the Calico CNI plugin:
@@ -55,7 +55,7 @@ vi /opt/mesosphere/etc/dcos/network/cni/calico.cni
 {
     "name": "calico",
     "type": "calico",
-    "etcd_endpoints": "http://172.31.15.230:2379",
+    "etcd_endpoints": "http://172.31.5.132:2379",
     "ipam": {
         "type": "calico-ipam"
     }
@@ -312,11 +312,7 @@ dcos package install --options=config.json spark
 ## Run Spark Streaming Job
 
 ```
-dcos spark run --verbose --submit-args="--conf spark.mesos.network.name=calico --conf spark.cores.max=6 --conf spark.mesos.executor.docker.image=janr/spark-streaming-kafka:v2 --conf spark.mesos.executor.docker.forcePullImage=true --conf spark.mesos.principal=spark-principal https://gist.githubusercontent.com/jrx/56e72ada489bf36646525c34fdaa7d63/raw/90df6046886e7c50fb18ea258a7be343727e944c/streamingWordCount-CNI.py"
-```
-
-```
-dcos spark run --verbose --submit-args="--supervise --conf spark.mesos.network.name=calico --conf spark.cores.max=6 --conf spark.mesos.executor.docker.image=janr/spark-streaming-kafka:v2 --conf spark.mesos.executor.docker.forcePullImage=true --conf spark.mesos.principal=spark-principal --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CA_DIR=.ssl/ --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CA_FILE=.ssl/ca.crt --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CERT_FILE=.ssl/scheduler.crt --conf spark.mesos.driverEnv.LIBPROCESS_SSL_KEY_FILE=.ssl/scheduler.key --conf spark.mesos.driverEnv.MESOS_MODULES=file:///opt/mesosphere/etc/mesos-scheduler-modules/dcos_authenticatee_module.json --conf spark.mesos.driverEnv.MESOS_AUTHENTICATEE=com_mesosphere_dcos_ClassicRPCAuthenticatee https://gist.githubusercontent.com/jrx/56e72ada489bf36646525c34fdaa7d63/raw/90df6046886e7c50fb18ea258a7be343727e944c/streamingWordCount-CNI.py"
+dcos spark run --verbose --submit-args="--supervise --conf spark.mesos.network.name=calico --conf spark.mesos.network.labels=app:backend,group:development --conf spark.mesos.containerizer=mesos --conf spark.cores.max=6 --conf spark.mesos.executor.docker.image=janr/spark-streaming-kafka:2.1.0-2.2.0-1-hadoop-2.7-nobody-99 --conf spark.mesos.executor.docker.forcePullImage=true --conf spark.mesos.principal=spark-principal --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CA_DIR=.ssl/ --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CA_FILE=.ssl/ca.crt --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CERT_FILE=.ssl/scheduler.crt --conf spark.mesos.driverEnv.LIBPROCESS_SSL_KEY_FILE=.ssl/scheduler.key --conf spark.mesos.driverEnv.MESOS_MODULES=file:///opt/mesosphere/etc/mesos-scheduler-modules/dcos_authenticatee_module.json --conf spark.mesos.driverEnv.MESOS_AUTHENTICATEE=com_mesosphere_dcos_ClassicRPCAuthenticatee https://gist.githubusercontent.com/jrx/56e72ada489bf36646525c34fdaa7d63/raw/90df6046886e7c50fb18ea258a7be343727e944c/streamingWordCount-CNI.py"
 ```
 
 
