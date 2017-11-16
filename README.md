@@ -31,11 +31,19 @@ The recommendation is to setup an HA cluster: https://coreos.com/etcd/docs/lates
 
 ## Calico CNI
 
-Install calico manually by starting the Calico Node via Docker on each DC/OS Agent:
+
+**The following steps needs to be done on each cluster node - Masters and Agents:**
+
+
+If your cluster is running in AWS, you need to disable the Source/Destination Checks on all of your nodes. To do so log into the AWS EC2 interface, right click on each of the instances that are used as private nodes and select Networking / Change Source/Dest. Check, [Yes, Disable]
+
+Install calico manually by starting the Calico Node via Docker:
 
 ```
 sudo docker rm /calico-node -f | true && sudo docker run -d --restart=always --net=host --privileged --name=calico-node -e FELIX_IGNORELOOSERPF=true -v /lib/modules:/lib/modules -v /var/log/calico:/var/log/calico -v /var/run/calico:/var/run/calico -v /run/docker/plugins:/run/docker/plugins -v /var/run/docker.sock:/var/run/docker.sock -e CALICO_LIBNETWORK_ENABLED=true -e IP=$(/opt/mesosphere/bin/detect_ip) -e HOSTNAME=$(hostname) -e ETCD_ENDPOINTS=http://172.31.5.132:2379 -e ETCD_SCHEME=http quay.io/calico/node:v2.6.2
 ```
+
+**The following steps needs to be done only on Agents:**
 
 Download and install the binaries for the Calico CNI plugin:
 
@@ -62,10 +70,16 @@ vi /opt/mesosphere/etc/dcos/network/cni/calico.cni
 }
 ```
 
-Restart the DC/OS Mesos Agent:
+Restart the Agent:
 
 ```
 systemctl restart dcos-mesos-slave
+```
+
+or
+
+```
+systemctl restart dcos-mesos-slave-public
 ```
 
 ## Example Configs
@@ -136,8 +150,48 @@ On the Bootstrap Node
 ```
 sudo curl -L https://github.com/projectcalico/calicoctl/releases/download/v1.6.1/calicoctl -o /usr/bin/calicoctl
 sudo chmod +x /usr/bin/calicoctl
+```
 
-calicoctl get profile -o yaml
+
+The default profile doesn't allow the Host to connect to Calico IP addresses. But in order for starting a Spark Job, it must be able to talk to Mesos Masters:
+
+```
+calicoctl apply -f - <<EOF
+- apiVersion: v1
+  kind: profile
+  metadata:
+    name: calico
+  spec:
+    egress:
+    - action: allow
+      destination: {}
+      source: {}
+    ingress:
+    - action: allow
+      destination: {}
+      source: {}
+EOF
+```
+
+We also enable IPIP to be able to connect to Nodes across different AWS AZs:
+
+```
+calicoctl apply -f - <<EOF
+- apiVersion: v1
+  kind: ipPool
+  metadata:
+    cidr: 192.168.0.0/16
+  spec:
+    ipip:
+      enabled: true
+      mode: cross-subnet
+    nat-outgoing: true
+- apiVersion: v1
+  kind: ipPool
+  metadata:
+    cidr: fd80:24e2:f998:72d6::/64
+  spec: {}
+EOF
 ```
 
 
@@ -322,10 +376,3 @@ dcos package install --options=config.json spark
 ```
 dcos spark run --verbose --submit-args="--supervise --conf spark.mesos.network.name=calico --conf spark.mesos.network.labels=app:backend,group:development --conf spark.mesos.containerizer=mesos --conf spark.cores.max=6 --conf spark.mesos.executor.docker.image=janr/spark-streaming-kafka:v2 --conf spark.mesos.executor.docker.forcePullImage=true --conf spark.mesos.principal=spark-principal --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CA_DIR=.ssl/ --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CA_FILE=.ssl/ca.crt --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CERT_FILE=.ssl/scheduler.crt --conf spark.mesos.driverEnv.LIBPROCESS_SSL_KEY_FILE=.ssl/scheduler.key --conf spark.mesos.driverEnv.MESOS_MODULES=file:///opt/mesosphere/etc/mesos-scheduler-modules/dcos_authenticatee_module.json --conf spark.mesos.driverEnv.MESOS_AUTHENTICATEE=com_mesosphere_dcos_ClassicRPCAuthenticatee https://gist.githubusercontent.com/jrx/56e72ada489bf36646525c34fdaa7d63/raw/90df6046886e7c50fb18ea258a7be343727e944c/streamingWordCount-CNI.py"
 ```
-
-
-## TODO:
-- Run Simple task with Calico in Strict Mode
-- Run Kafka with CNI
-- Run Spark with CNI
-- Isolate Networks using Calico profiles
