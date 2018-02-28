@@ -7,8 +7,8 @@ The default profile doesn't allow the Host to connect to Calico IP addresses. Bu
 To discover the IP address assigned for the Calico Tunnel run something like the following on the Mesos Masters:
 
 ```
-ip addr show tunl0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-192.168.126.0
+$ ip addr show tunl0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
+192.168.230.192
 ```
 
 - Define this IP address within the Calico Policy for Spark and apply it via:
@@ -29,8 +29,16 @@ spec:
   - action: allow
     destination: {}
     source:
+      selector: role == 'spark'
+  - action: allow
+    destination: {}
+    source:
+      selector: role == 'kafka'
+  - action: allow
+    destination: {}
+    source:
       nets:
-        - "192.168.126.0/32"
+        - "192.168.230.192/32"
 EOF
 ```
 
@@ -61,12 +69,7 @@ spec:
     destination: {}
     source:
       nets:
-        - "192.168.126.0/32"
-  - action: allow
-    destination: {}
-    source:
-      nets:
-        - "10.0.0.0/16"
+        - "192.168.230.192/32"
 EOF
 ```
 
@@ -74,7 +77,7 @@ EOF
 
 https://docs.mesosphere.com/services/kafka/kafka-auth/
 
-- Install Enterprise Calico
+- Install Enterprise CLI
 
 ```
 dcos package install dcos-enterprise-cli --cli --yes
@@ -239,7 +242,7 @@ curl -X PUT -k \
 -H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root/users/dcos_marathon/create
 ```
 
-- Create a file **config.json** and set the Spark principal and secret
+- Create a configuration file **/tmp/spark.json** and set the Spark principal and secret
 
 ```json
 cat <<EOF > /tmp/spark.json
@@ -254,7 +257,7 @@ cat <<EOF > /tmp/spark.json
 EOF
 ```
 
-- Install Spark using the spark.json file
+- Install Spark using the configuration file
 
 ```
 dcos package install --options=/tmp/spark.json spark
@@ -263,5 +266,5 @@ dcos package install --options=/tmp/spark.json spark
 ## Run Spark Streaming Job
 
 ```
-dcos spark run --verbose --submit-args="--supervise --conf spark.mesos.network.name=calico --conf spark.mesos.network.labels=role:spark --conf spark.mesos.containerizer=mesos --conf spark.mesos.principal=spark-principal --conf spark.mesos.driverEnv.SPARK_USER=root --conf spark.cores.max=6 --conf spark.mesos.executor.docker.image=janr/spark-streaming-kafka:v2 --conf spark.mesos.executor.docker.forcePullImage=true  --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CA_DIR=.ssl/ --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CA_FILE=.ssl/ca.crt --conf spark.mesos.driverEnv.LIBPROCESS_SSL_CERT_FILE=.ssl/scheduler.crt --conf spark.mesos.driverEnv.LIBPROCESS_SSL_KEY_FILE=.ssl/scheduler.key --conf spark.mesos.driverEnv.MESOS_MODULES=file:///opt/mesosphere/etc/mesos-scheduler-modules/dcos_authenticatee_module.json --conf spark.mesos.driverEnv.MESOS_AUTHENTICATEE=com_mesosphere_dcos_ClassicRPCAuthenticatee https://gist.githubusercontent.com/jrx/56e72ada489bf36646525c34fdaa7d63/raw/90df6046886e7c50fb18ea258a7be343727e944c/streamingWordCount-CNI.py"
+dcos spark run --verbose --submit-args="--supervise --conf spark.mesos.network.name=calico --conf spark.mesos.network.labels=role:spark --conf spark.mesos.containerizer=mesos --conf spark.mesos.principal=spark-principal --conf spark.mesos.driverEnv.SPARK_USER=root --conf spark.cores.max=6 --conf spark.mesos.executor.docker.image=janr/spark-streaming-kafka:2.1.0-2.2.1-1-hadoop-2.6-nobody-99 --conf spark.mesos.executor.docker.forcePullImage=true https://gist.githubusercontent.com/jrx/56e72ada489bf36646525c34fdaa7d63/raw/90df6046886e7c50fb18ea258a7be343727e944c/streamingWordCount-CNI.py"
 ```
