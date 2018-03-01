@@ -114,7 +114,7 @@ dcos package install dcos-enterprise-cli --cli --yes
 ```
 dcos security org service-accounts keypair /tmp/edge-lb-private-key.pem /tmp/edge-lb-public-key.pem
 dcos security org service-accounts create -p /tmp/edge-lb-public-key.pem -d "Edge-LB service account" edge-lb-principal
-dcos security secrets create-sa-secret /tmp/edge-lb-private-key.pem edge-lb-principal dcos-edgelb/edge-lb-secret
+dcos security secrets create-sa-secret --strict /tmp/edge-lb-private-key.pem edge-lb-principal dcos-edgelb/edge-lb-secret
 ```
 
 - Create and grant permissions
