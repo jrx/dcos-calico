@@ -12,6 +12,7 @@ If you want use Calico, you can start out testing the community supported packag
 1. [Test: Marathon-LB](./marathon-lb)
 1. [Test: Edge-LB](./edge-lb)
 1. [Test: Spark + Kafka](./spark)
+1. [Test: Elastic](./elastic)
 
 ### Documentation
 
