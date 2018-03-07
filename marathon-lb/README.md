@@ -29,7 +29,7 @@ spec:
         - "192.168.156.64/32"
     destination:
       ports:
-      - 80
+      - 8080
   egress:
   - action: allow
 EOF
@@ -55,14 +55,29 @@ curl -X PUT -k \
 ```json
 {
   "id": "/nginx-ucr",
-  "user": "root",
+  "user": "nobody",
   "container": {
     "type": "MESOS",
     "docker": {
-      "image": "nginx"
-    }
+      "image": "sdelrio/docker-minimal-nginx"
+    },
+    "portMappings": [
+      {
+        "containerPort": 8080,
+        "hostPort": 0,
+        "protocol": "tcp",
+        "name": "web"
+      }
+    ]
   },
   "cpus": 0.1,
+  "healthChecks": [
+    {
+      "portIndex": 0,
+      "protocol": "MESOS_HTTP",
+      "path": "/"
+    }
+  ],
   "instances": 1,
   "mem": 128,
   "networks": [
@@ -77,7 +92,14 @@ curl -X PUT -k \
   "labels": {
     "HAPROXY_GROUP": "external",
     "HAPROXY_0_VHOST": "<your-vhost>"
-  }
+  },
+  "portDefinitions": [
+    {
+      "protocol": "tcp",
+      "port": 8080,
+      "name": "nginx-ucr"
+    }
+  ]
 }
 ```
 
