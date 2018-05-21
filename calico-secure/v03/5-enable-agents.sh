@@ -1,0 +1,80 @@
+source env.sh
+
+
+####### etcd
+# Install, enable, and start etcd systemd unit (can be run independently on all agents)
+sudo cp /etc/etcd/dcos-etcd-proxy.service /etc/systemd/system/dcos-etcd-proxy.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable dcos-etcd-proxy.service
+sudo systemctl restart dcos-etcd-proxy.service
+
+# Validate it's running (etcd must be running on all masters prior to this working)
+sudo ETCDCTL_API=2 /opt/etcd/etcdctl \
+  --endpoints https://localhost:2379 \
+  --key-file /etc/etcd/certs/etcd.key \
+  --cert-file /etc/etcd/certs/etcd.crt \
+  --ca-file /etc/etcd/certs/dcos-ca.crt \
+  cluster-health
+
+
+####### Docker cluster store
+# Get docker to pick up the new config
+# !!! If this fails, you may have to remove the 'overlay' line from /etc/docker/daemon.json - it doesn't like redundant configurations
+# sudo sed -i "/storage-driver/d" /etc/docker/daemon.json
+sudo systemctl restart docker
+
+# Validate
+sudo docker info | grep -i cluster
+
+
+####### Calico node (not strictly necessary on masters, but a good idea, I think)
+sudo cp /etc/calico/dcos-calico-node.service /etc/systemd/system/dcos-calico-node.service
+sudo cp /etc/calico/dcos-calico-node.timer /etc/systemd/system/dcos-calico-node.timer
+
+sudo systemctl daemon-reload
+sudo systemctl enable dcos-calico-node.service
+sudo systemctl restart dcos-calico-node.service
+
+sudo systemctl enable dcos-calico-node.timer
+sudo systemctl restart dcos-calico-node.timer
+
+# Check status
+sleep 15
+sudo calicoctl node status
+
+
+####### Set up CNI
+## Plugin dir
+# Copy setting from /opt/mesosphere/etc/mesos-slave-common to /var/lib/dcos/mesos-slave-common
+# Append custom CALICO_CNI_PLUGIN_DIR
+# Running this multiple times will create duplicate and ugly but not harmful settings
+grep MESOS_NETWORK_CNI_PLUGINS_DIR /opt/mesosphere/etc/mesos-slave-common | sudo tee -a /var/lib/dcos/mesos-slave-common
+sudo sed -i '/MESOS_NETWORK_CNI_PLUGINS_DIR/s|$|:CALICO_CNI_PLUGIN_DIR|g' /var/lib/dcos/mesos-slave-common
+sudo sed -i "s|CALICO_CNI_PLUGIN_DIR|${CALICO_CNI_PLUGIN_DIR}|g" /var/lib/dcos/mesos-slave-common
+
+## Plugin conf
+sudo mkdir -p /etc/systemd/system/dcos-mesos-slave.service.d
+# We can do both dcos-mesos-slave and dcos-mesos-slave-common on all nodes, safely; only the relevant one will be used by the corresponding systemd unit
+# We use a systemd override to copy the conf from custom location into default MESOS_NETWORK_CNI_CONFIG_DIR
+sudo tee /etc/systemd/system/dcos-mesos-slave.service.d/override.conf <<-'EOF'
+[Service]
+ExecStartPre=/bin/cp CALICO_CNI_CONF_DIR/calico.conf /opt/mesosphere/etc/dcos/network/cni/calico.conf
+# ExecStartPre=/bin/ln -sf CALICO_CNI_CONF_DIR/calico.conf /opt/mesosphere/etc/dcos/network/cni/calico.conf
+EOF
+
+sudo sed -i "s|CALICO_CNI_CONF_DIR|${CALICO_CNI_CONF_DIR}|g" /etc/systemd/system/dcos-mesos-slave.service.d/override.conf
+
+sudo mkdir -p /etc/systemd/system/dcos-mesos-slave-public.service.d
+# /etc/systemd/system/dcos-mesos-slave.service.d/override.conf
+sudo tee /etc/systemd/system/dcos-mesos-slave-public.service.d/override.conf <<-'EOF'
+[Service]
+ExecStartPre=/bin/cp CALICO_CNI_CONF_DIR/calico.conf /opt/mesosphere/etc/dcos/network/cni/calico.conf
+# ExecStartPre=/bin/ln -sf CALICO_CNI_CONF_DIR/calico.conf /opt/mesosphere/etc/dcos/network/cni/calico.conf
+EOF
+
+sudo sed -i "s|CALICO_CNI_CONF_DIR|${CALICO_CNI_CONF_DIR}|g" /etc/systemd/system/dcos-mesos-slave-public.service.d/override.conf
+
+## Restart
+sudo systemctl daemon-reload
+sudo systemctl restart dcos-mesos-slave*
