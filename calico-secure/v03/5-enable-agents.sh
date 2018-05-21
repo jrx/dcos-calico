@@ -21,14 +21,16 @@ sudo ETCDCTL_API=2 /opt/etcd/etcdctl \
 ####### Docker cluster store
 # Get docker to pick up the new config
 # !!! If this fails, you may have to remove the 'overlay' line from /etc/docker/daemon.json - it doesn't like redundant configurations
-# sudo sed -i "/storage-driver/d" /etc/docker/daemon.json
+if [[ $(systemctl cat docker | grep 'storage-driver=overlay' | wc -l) -eq 1 ]]; then
+  sudo sed -i "/storage-driver/d" /etc/docker/daemon.json
+fi
 sudo systemctl restart docker
 
 # Validate
 sudo docker info | grep -i cluster
 
 
-####### Calico node (not strictly necessary on masters, but a good idea, I think)
+####### Calico node
 sudo cp /etc/calico/dcos-calico-node.service /etc/systemd/system/dcos-calico-node.service
 sudo cp /etc/calico/dcos-calico-node.timer /etc/systemd/system/dcos-calico-node.timer
 
@@ -40,7 +42,7 @@ sudo systemctl enable dcos-calico-node.timer
 sudo systemctl restart dcos-calico-node.timer
 
 # Check status
-sleep 15
+sleep 5
 sudo calicoctl node status
 
 

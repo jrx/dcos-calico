@@ -21,7 +21,9 @@ sudo ETCDCTL_API=2 /opt/etcd/etcdctl \
 ####### Docker cluster store
 # Get docker to pick up the new config
 # !!! If this fails, you may have to remove the 'overlay' line from /etc/docker/daemon.json - it doesn't like redundant configurations
-# sudo sed -i "/storage-driver/d" /etc/docker/daemon.json
+if [[ $(systemctl cat docker | grep 'storage-driver=overlay' | wc -l) -eq 1 ]]; then
+  sudo sed -i "/storage-driver/d" /etc/docker/daemon.json
+fi
 sudo systemctl restart docker
 
 # Validate
