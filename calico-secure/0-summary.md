@@ -1,3 +1,5 @@
+Prereq: In cloud environments (AWS), need to turn off source/dest IP check, or I think configure ipip:always in the pool config.
+
 1 Install etcd on all masters
 
 2 Install etcd proxy on all agents (Test etcd on all nodes)
@@ -8,9 +10,9 @@
 
 5 Install and configure calicoctl
 
-Install Calico CNI stuff on all nodes
+6 Install Calico CNI stuff on all nodes
 
-Test stuff
+7 Test stuff
 
 Directories:
 /opt/etcd - etcd binaries
