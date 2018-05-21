@@ -1,4 +1,4 @@
-source env.sh
+source env.export
 
 
 sudo mkdir -p ${ETCD_ROOT_DIR}

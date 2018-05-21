@@ -1,4 +1,4 @@
-source env.sh
+source env.export
 # Unused, but specified for consistency
 
 ####### etcd
