@@ -9,7 +9,7 @@ export ETCD_TRANSPORT_PORT=62380
 
 ## Env variables
 export MASTER_LIST_NOPORT=$(curl -sS master.mesos:8181/exhibitor/v1/cluster/status | python -c 'import sys,json;j=json.loads(sys.stdin.read());print(",".join([y["hostname"]+"=https://"+y["hostname"]+":ETCD_TRANSPORT_PORT" for y in j]))')
-export MASTER_LIST=$(echo $MASTER_LIST_NOPORT | sed "s|ETCD_TRANSPORT_PORT|${ETCD_TRANSPORT_PORT}|")
+export MASTER_LIST=$(echo $MASTER_LIST_NOPORT | sed "s|ETCD_TRANSPORT_PORT|${ETCD_TRANSPORT_PORT}|g")
 
 export ETCD_ROOT_DIR=/opt/etcd
 export ETCD_DATA_DIR=/var/etcd/data
