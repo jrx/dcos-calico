@@ -248,6 +248,7 @@ ExecStart=/usr/bin/docker run --net=host --privileged \
  -e AS=${CALICO_AS} \
  -e NO_DEFAULT_POOLS=${CALICO_NO_DEFAULT_POOLS} \
  -e CALICO_LIBNETWORK_ENABLED=${CALICO_LIBNETWORK_ENABLED} \
+ -e CALICO_LIBNETWORK_LABEL_ENDPOINTS=true \
  -e ETCD_ENDPOINTS=${ETCD_ENDPOINTS_OPEN} \
  -e FELIX_IGNORELOOSERPF=true \
  -v /var/log/calico:/var/log/calico \
