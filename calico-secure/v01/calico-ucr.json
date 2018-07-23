@@ -1,0 +1,24 @@
+{
+  "id": "/calico-ucr",
+  "cmd": "/usr/sbin/ip addr show && tail -f /dev/null",
+  "constraints": [
+    [
+      "hostname",
+      "IS",
+      "10.10.0.44"
+    ]
+  ],
+  "container": {
+    "type": "MESOS",
+    "volumes": []
+  },
+  "cpus": 0.1,
+  "instances": 1,
+  "mem": 128,
+  "networks": [
+    {
+      "name": "calico",
+      "mode": "container"
+    }
+  ]
+}
