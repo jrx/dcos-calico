@@ -8,6 +8,7 @@ If you want use Calico, you can start out testing the community supported packag
 ## Setup Guide
 
 1. [Setup Calico](./calico)
+1. [Setup Calico in secure way](./calico-secure)
 1. [Test: Simple Webserver](./webserver)
 1. [Test: Marathon-LB](./marathon-lb)
 1. [Test: Edge-LB](./edge-lb)

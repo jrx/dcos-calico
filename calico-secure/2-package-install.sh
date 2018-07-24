@@ -11,8 +11,8 @@ sudo tar -xzvf etcd-v3.3.5-linux-amd64.tar.gz -C ${ETCD_ROOT_DIR} --strip-compon
 
 
 ## Download and install calico and calico-ipam CNI plugin binaries
-sudo curl -L https://github.com/projectcalico/cni-plugin/releases/download/v1.11.5/calico -o ${CALICO_CNI_PLUGIN_DIR}/calico
-sudo curl -L https://github.com/projectcalico/cni-plugin/releases/download/v1.11.5/calico-ipam -o ${CALICO_CNI_PLUGIN_DIR}/calico-ipam
+sudo curl -L https://github.com/projectcalico/cni-plugin/releases/download/v1.11.6/calico -o ${CALICO_CNI_PLUGIN_DIR}/calico
+sudo curl -L https://github.com/projectcalico/cni-plugin/releases/download/v1.11.6/calico-ipam -o ${CALICO_CNI_PLUGIN_DIR}/calico-ipam
 sudo chmod +x ${CALICO_CNI_PLUGIN_DIR}/calico
 sudo chmod +x ${CALICO_CNI_PLUGIN_DIR}/calico-ipam
 
