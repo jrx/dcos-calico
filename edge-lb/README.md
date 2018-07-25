@@ -1,6 +1,6 @@
-## Expose Service via Marathon-LB
+# Expose Service via Edge-LB
 
-### Calico Policy
+## Calico Policy
 
 - Create Policy
 
@@ -44,30 +44,30 @@ spec:
       destination: {}
       source:
         nets:
-          - "192.168.0.0/16"
+          - "172.16.0.0/16"
   egress:
   - action: allow
 EOF
 ```
 
-### Deploy Container for Testing
+## Deploy Container for Testing
+
+- Install Enterprise CLI
+
+```shell
+dcos package install dcos-enterprise-cli --cli --yes
+```
 
 - Allow Marathon to start containers as `root` for easy testing
 
-```
-# Create permission to start containers as root
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root \
--d '{"description":"Allows Linux user root to execute tasks"}' \
--H 'Content-Type: application/json'
-# Grant permissions to Marathon
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root/users/dcos_marathon/create
+```shell
+dcos security org users grant dcos_marathon dcos:mesos:master:task:user:root create
 ```
 
 - Start simple Nginx server
 
 ```json
+cat <<EOF > /tmp/nginx-ucr.json
 {
   "id": "/nginx-ucr",
   "user": "root",
@@ -90,28 +90,27 @@ curl -X PUT -k \
     }
   ]
 }
+EOF
 ```
 
-### Install Edge-LB
+```shell
+dcos marathon app add /tmp/nginx-ucr.json
+```
+
+## Install Edge-LB
 
 - Add package repositories for Edge-LB
 
-```
+```shell
 dcos package repo add --index=0 edgelb-aws \
   https://<AWS S3 bucket>/stub-universe-edgelb.json
 dcos package repo add --index=0 edgelb-pool-aws \
   https://<AWS S3 bucket>/stub-universe-edgelb-pool.json
 ```
 
-- Install Enterprise CLI
-
-```
-dcos package install dcos-enterprise-cli --cli --yes
-```
-
 - Setup service account for Edge-LB
 
-```
+```shell
 dcos security org service-accounts keypair /tmp/edge-lb-private-key.pem /tmp/edge-lb-public-key.pem
 dcos security org service-accounts create -p /tmp/edge-lb-public-key.pem -d "Edge-LB service account" edge-lb-principal
 dcos security secrets create-sa-secret --strict /tmp/edge-lb-private-key.pem edge-lb-principal dcos-edgelb/edge-lb-secret
@@ -119,7 +118,7 @@ dcos security secrets create-sa-secret --strict /tmp/edge-lb-private-key.pem edg
 
 - Create and grant permissions
 
-```
+```shell
 dcos security org users grant edge-lb-principal dcos:adminrouter:service:marathon full
 dcos security org users grant edge-lb-principal dcos:adminrouter:package full
 dcos security org users grant edge-lb-principal dcos:adminrouter:service:edgelb full
@@ -138,7 +137,7 @@ dcos security org users grant edge-lb-principal dcos:mesos:master:task:app_id fu
 
 - Create configuration file
 
-```
+```shell
 cat <<EOF > /tmp/edge-lb.json
 {
   "service": {
@@ -152,11 +151,11 @@ EOF
 
 - Install Edge-LB
 
-```
-dcos package install --options=/tmp/edge-lb.json edgelb
+```shell
+dcos package install --options=/tmp/edge-lb.json edgelb --yes
 ```
 
-### Create a pool
+## Create a pool
 
 https://docs.mesosphere.com/services/edge-lb/1.0.0/pool-configuration/v2-examples/#virtual-networks
 
@@ -203,20 +202,19 @@ EOF
 
 - Grant permissions for the pool
 
-```
+```shell
 dcos security org users grant edge-lb-principal dcos:adminrouter:service:dcos-edgelb/pools/calico-lb full
 ```
 
 - Deploy the pool
 
-```
+```shell
 dcos edgelb create /tmp/calico-lb.json
 ```
 
+## Test the connection
 
-- Test the connection
-
-```
+```shell
 $ curl edgelb-pool-0-server.dcos-edgelbpoolscalico-lb.containerip.dcos.thisdcos.directory
 <!DOCTYPE html>
 <html>
