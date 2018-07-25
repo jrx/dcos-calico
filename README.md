@@ -8,6 +8,8 @@ If you want use Calico, you can start out testing the community supported packag
 
 ## Setup Guide
 
+To keep the rule design simple and powerful, each application should get its own profile and respective role named after the application.
+
 1. [Setup Calico](./calico-secure)
 1. [Test: Simple Webserver](./webserver)
 1. [Test: VIPs](./vip)
