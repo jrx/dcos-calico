@@ -117,6 +117,8 @@ EOF
 dcos marathon app add /tmp/test-vip.json
 ```
 
+## Test the connection
+
 - We jump into the container `test-vip` and try to curl the Nginx Server via the VIP endpoint. This would be the expected output:
 
 ```shell

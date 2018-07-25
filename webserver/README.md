@@ -1,25 +1,23 @@
-## Calico policies
+# Configure a Simple Webserver
 
-To keep the rule design simple and powerful, each application should get its own profile and respective role named after the application. Afterwards a whitelist approach can be configured, so that each profile contains rules to explicitly allow a specific role access. Further restrictions inside the cluster network and the internet should be configured using CIDR notation.
+## Deploy Containers for Testing
 
-### Deploy Containers for Testing
+- Install Enterprise CLI
+
+```shell
+dcos package install dcos-enterprise-cli --cli --yes
+```
 
 - Allow Marathon to start containers as `root` for easy testing
 
-```
-# Create permission to start containers as root
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root \
--d '{"description":"Allows Linux user root to execute tasks"}' \
--H 'Content-Type: application/json'
-# Grant permissions to Marathon
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root/users/dcos_marathon/create
+```shell
+dcos security org users grant dcos_marathon dcos:mesos:master:task:user:root create
 ```
 
-- Start simple Nginx server
+- Start Nginx server
 
 ```json
+cat <<EOF > /tmp/nginx-ucr.json
 {
   "id": "/nginx-ucr",
   "user": "root",
@@ -42,11 +40,17 @@ curl -X PUT -k \
     }
   ]
 }
+EOF
+```
+
+```shell
+dcos marathon app add /tmp/nginx-ucr.json
 ```
 
 - Start a container `test-allow` that should be allowed to curl the Nginx server below
 
 ```json
+cat <<EOF > /tmp/test-allow.json
 {
   "id": "/test-allow",
   "user": "root",
@@ -70,11 +74,17 @@ curl -X PUT -k \
     }
   ]
 }
+EOF
+```
+
+```shell
+dcos marathon app add /tmp/test-allow.json
 ```
 
 - Start a second container `test-deny` that should NOT be allowed to curl the Nginx server
 
 ```json
+cat <<EOF > /tmp/test-deny.json
 {
   "id": "/test-deny",
   "user": "root",
@@ -98,7 +108,14 @@ curl -X PUT -k \
     }
   ]
 }
+EOF
 ```
+
+```shell
+dcos marathon app add /tmp/test-deny.json
+```
+
+## Calico policy
 
 - Setup profile for `nginx-ucr` to be only accessible from `/test-allow`.
 
@@ -123,9 +140,11 @@ spec:
 EOF
 ```
 
+## Test the connection
+
 - We jump into the container `test-allow` and try to curl the Nginx Server. This should work fine:
 
-```
+```shell
 $ dcos task exec test-allow curl nginx-ucr.marathon.containerip.dcos.thisdcos.directory
 Overwriting environment variable 'LIBPROCESS_IP'
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
@@ -160,7 +179,7 @@ Commercial support is available at
 
 - If we jump into the second container `test-deny` and try to do the same. We should not be able to etablish an connection:
 
-```
+```shell
 $ dcos task exec test-deny curl nginx-ucr.marathon.containerip.dcos.thisdcos.directory
 Overwriting environment variable 'LIBPROCESS_IP'
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
