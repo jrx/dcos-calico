@@ -6,9 +6,9 @@ The default profile doesn't allow the Host to connect to Calico IP addresses. Bu
 
 To discover the IP address assigned for the Calico Tunnel run something like the following on the Mesos Masters:
 
-```
+```shell
 $ ip addr show tunl0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-192.168.230.192
+172.16.136.128
 ```
 
 - Define this IP address within the Calico Policy for Spark and apply it via:
@@ -38,7 +38,7 @@ spec:
     destination: {}
     source:
       nets:
-        - "192.168.230.192/32"
+        - "172.16.136.128/32"
 EOF
 ```
 
@@ -69,7 +69,7 @@ spec:
     destination: {}
     source:
       nets:
-        - "192.168.230.192/32"
+        - "172.16.136.128/32"
 EOF
 ```
 
@@ -79,65 +79,34 @@ https://docs.mesosphere.com/services/kafka/kafka-auth/
 
 - Install Enterprise CLI
 
-```
+```shell
 dcos package install dcos-enterprise-cli --cli --yes
 ```
 
 - For this demo install Kafka in Strict Mode
 
-```
+```shell
 dcos security org service-accounts keypair /tmp/kafka-private-key.pem /tmp/kafka-public-key.pem
 dcos security org service-accounts create -p /tmp/kafka-public-key.pem -d "Kafka service account" kafka-principal
 dcos security secrets create-sa-secret --strict /tmp/kafka-private-key.pem kafka-principal kafka/secret
 ```
 
-- Create permissions for Kafka
+- Grant permissions to Kafka
 
-```
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:framework:role:kafka-role \
--d '{"description":"Controls the ability of kafka-role to register as a framework with the Mesos master"}' \
--H 'Content-Type: application/json'
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:reservation:role:kafka-role \
--d '{"description":"Controls the ability of kafka-role to reserve resources"}' \
--H 'Content-Type: application/json'
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:volume:role:kafka-role \
--d '{"description":"Controls the ability of kafka-role to access volumes"}' \
--H 'Content-Type: application/json'
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:reservation:principal:kafka-principal \
--d '{"description":"Controls the ability of kafka-principal to reserve resources"}' \
--H 'Content-Type: application/json'
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:volume:principal:kafka-principal \
--d '{"description":"Controls the ability of kafka-principal to access volumes"}' \
--H 'Content-Type: application/json'  
-```
-
-- Grant Permissions to Kafka
-
-```
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:framework:role:kafka-role/users/kafka-principal/create
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:reservation:role:kafka-role/users/kafka-principal/create
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:volume:role:kafka-role/users/kafka-principal/create
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:nobody/users/kafka-principal/create
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:reservation:principal:kafka-principal/users/kafka-principal/delete
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:volume:principal:kafka-principal/users/kafka-principal/delete
+```shell
+dcos security org users grant kafka-principal dcos:mesos:master:framework:role:kafka-role create
+dcos security org users grant kafka-principal dcos:mesos:master:reservation:role:kafka-role create
+dcos security org users grant kafka-principal dcos:mesos:master:volume:role:kafka-role create
+dcos security org users grant kafka-principal dcos:mesos:master:task:user:nobody create
+dcos security org users grant kafka-principal dcos:mesos:master:reservation:principal:kafka-principal delete
+dcos security org users grant kafka-principal dcos:mesos:master:volume:principal:kafka-principal delete
 ```
 
 ## Install Kafka
 
 - Create Kafka configuration file
 
-```
+```shell
 cat <<EOF > /tmp/kafka.json
 {
   "service": {
@@ -155,19 +124,19 @@ EOF
 
 - Install Kafka
 
-```
-dcos package install --options=/tmp/kafka.json kafka
+```shell
+dcos package install --options=/tmp/kafka.json kafka --yes
 ```
 
 - Check that Kafka brokers are using the Calico IP addresses
 
-```
-dcos kafka endpoints broker
+```shell
+$ dcos kafka endpoints broker
 {
   "address": [
-    "192.168.177.0:1025",
-    "192.168.133.64:1025",
-    "192.168.186.192:1025"
+    "172.16.30.1:1025",
+    "172.16.140.129:1025",
+    "172.16.227.1:1025"
   ],
   "dns": [
     "kafka-0-broker.kafka.autoip.dcos.thisdcos.directory:1025",
@@ -180,7 +149,7 @@ dcos kafka endpoints broker
 
 - Setup a topic
 
-```
+```shell
 dcos kafka topic create mytopic --replication=2 --partitions=4
 ```
 
@@ -188,58 +157,26 @@ dcos kafka topic create mytopic --replication=2 --partitions=4
 
 - Setup service account and secret
 
-```
+```shell
 dcos security org service-accounts keypair /tmp/spark-private.pem /tmp/spark-public.pem
 dcos security org service-accounts create -p /tmp/spark-public.pem -d "Spark service account" spark-principal
 dcos security secrets create-sa-secret --strict /tmp/spark-private.pem spark-principal spark/secret
 ```
 
-- Create permissions for the Spark Service Account¬ (Note: Some of them already exist.)
+- Grant permissions to the Spark
 
-```bash
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:agent:task:user:root \
--d '{"description":"Allows Linux user root to execute tasks"}' \
--H 'Content-Type: application/json'
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" "$(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:framework:role:*" \
--d '{"description":"Allows a framework to register with the Mesos master using the Mesos default role"}' \
--H 'Content-Type: application/json'
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" "$(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:app_id:%252Fspark" \
--d '{"description":"Allow to read the task state"}' \
--H 'Content-Type: application/json'
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:nobody \
--d '{"description":"Allows Linux user nobody to execute tasks"}' \
--H 'Content-Type: application/json'
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root \
--d '{"description":"Allows Linux user root to execute tasks"}' \
--H 'Content-Type: application/json'
-```
-
-- Grant permissions to the Spark Service Account
-
-```bash
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:agent:task:user:root/users/spark-principal/create
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" "$(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:framework:role:*/users/spark-principal/create"
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" "$(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:app_id:%252Fspark/users/spark-principal/create"
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:nobody/users/spark-principal/create
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root/users/spark-principal/create
+```shell
+dcos security org users grant spark-principal dcos:mesos:agent:task:user:root create
+dcos security org users grant spark-principal "dcos:mesos:master:framework:role:*" create
+dcos security org users grant spark-principal dcos:mesos:master:task:app_id:/spark create
+dcos security org users grant spark-principal dcos:mesos:master:task:user:nobody create
+dcos security org users grant spark-principal dcos:mesos:master:task:user:root create
 ```
 
 - Grant permissions to Marathon in order to the Spark the dispatcher in root
 
-```
-# Grant permissions to Marathon
-curl -X PUT -k \
--H "Authorization: token=$(dcos config show core.dcos_acs_token)" $(dcos config show core.dcos_url)/acs/api/v1/acls/dcos:mesos:master:task:user:root/users/dcos_marathon/create
+```shell
+dcos security org users grant dcos_marathon dcos:mesos:master:task:user:root create
 ```
 
 - Create a configuration file **/tmp/spark.json** and set the Spark principal and secret
@@ -259,12 +196,62 @@ EOF
 
 - Install Spark using the configuration file
 
-```
-dcos package install --options=/tmp/spark.json spark
+```shell
+dcos package install --options=/tmp/spark.json spark --yes
 ```
 
 ## Run Spark Streaming Job
 
-```
+```shell
 dcos spark run --verbose --submit-args="--supervise --conf spark.mesos.network.name=calico --conf spark.mesos.network.labels=role:spark --conf spark.mesos.containerizer=mesos --conf spark.mesos.principal=spark-principal --conf spark.mesos.driverEnv.SPARK_USER=root --conf spark.cores.max=6 --conf spark.mesos.executor.docker.image=janr/spark-streaming-kafka:2.1.0-2.2.1-1-hadoop-2.6-nobody-99 --conf spark.mesos.executor.docker.forcePullImage=true https://gist.githubusercontent.com/jrx/56e72ada489bf36646525c34fdaa7d63/raw/90df6046886e7c50fb18ea258a7be343727e944c/streamingWordCount-CNI.py"
+```
+
+## Test connection
+
+- Run the following on the master node
+
+```shell
+docker run -ti ches/kafka kafka-console-producer.sh --topic mytopic --broker-list kafka-0-broker.kafka.autoip.dcos.thisdcos.directory:1025
+```
+
+- Start a container `kafka-producer` with the Calico role `kafka` that will be used to send messages to the brokers
+
+```json
+cat <<EOF > /tmp/kafka-producer.json
+{
+  "id": "/kafka-producer",
+  "user": "root",
+  "cmd": "while true; do echo 'Kafka-Producer'; sleep 60; done",
+  "container": {
+    "type": "MESOS",
+    "docker": {
+      "image": "ches/kafka"
+    }
+  },
+  "cpus": 0.5,
+  "instances": 1,
+  "mem": 256,
+  "networks": [
+    {
+      "name": "calico",
+      "mode": "container",
+      "labels": {
+        "role": "kafka"
+      }
+    }
+  ]
+}
+EOF
+```
+
+```shell
+dcos marathon app add /tmp/kafka-producer.json
+```
+
+- We jump into the container `kafka-producer` and try to send some stuff to Kafka:
+
+```shell
+$ dcos task exec -it kafka-producer /kafka/bin/kafka-console-producer.sh --topic mytopic --broker-list kafka-0-broker.kafka.autoip.dcos.thisdcos.directory:1025
+Overwriting environment variable 'LIBPROCESS_IP'
+Hello World
 ```
