@@ -8,7 +8,7 @@ To discover the IP address assigned for the Calico Tunnel run something like the
 
 ```shell
 $ ip addr show tunl0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-172.16.136.128
+172.16.142.128
 ```
 
 - Define this IP address within the Calico Policy for Spark and apply it via:
@@ -38,7 +38,7 @@ spec:
     destination: {}
     source:
       nets:
-        - "172.16.136.128/32"
+        - "172.16.142.128/32"
 EOF
 ```
 
@@ -69,7 +69,7 @@ spec:
     destination: {}
     source:
       nets:
-        - "172.16.136.128/32"
+        - "172.16.142.128/32"
 EOF
 ```
 
@@ -188,7 +188,14 @@ cat <<EOF > /tmp/spark.json
     "name": "spark",
     "service_account": "spark-principal",
     "service_account_secret": "spark/secret",
-    "user": "root"
+    "user": "nobody",
+    "virtual_network_enabled": true,
+    "virtual_network_name": "calico",
+    "virtual_network_plugin_labels": [{
+      "key":"role",
+      "value": "spark"
+    }],
+    "UCR_containerizer": true
   }
 }
 EOF
@@ -197,13 +204,13 @@ EOF
 - Install Spark using the configuration file
 
 ```shell
-dcos package install --options=/tmp/spark.json spark --yes
+dcos package install spark --options=/tmp/spark.json --package-version 2.6.0-2.3.2 --yes
 ```
 
 ## Run Spark Streaming Job
 
 ```shell
-dcos spark run --verbose --submit-args="--supervise --conf spark.mesos.network.name=calico --conf spark.mesos.network.labels=role:spark --conf spark.mesos.containerizer=mesos --conf spark.mesos.principal=spark-principal --conf spark.mesos.driverEnv.SPARK_USER=root --conf spark.cores.max=6 --conf spark.mesos.executor.docker.image=janr/spark-streaming-kafka:2.1.0-2.2.1-1-hadoop-2.6-nobody-99 --conf spark.mesos.executor.docker.forcePullImage=true https://gist.githubusercontent.com/jrx/56e72ada489bf36646525c34fdaa7d63/raw/90df6046886e7c50fb18ea258a7be343727e944c/streamingWordCount-CNI.py"
+dcos spark run --verbose --submit-args="--supervise --conf spark.mesos.network.name=calico --conf spark.mesos.network.labels=role:spark --conf spark.mesos.containerizer=mesos --conf spark.mesos.driverEnv.SPARK_USER=root --conf spark.cores.max=6 --conf spark.mesos.executor.docker.image=janr/spark-streaming-kafka:2.6.0-2.3.2-hadoop-2.7-nobody-99 --conf spark.mesos.executor.docker.forcePullImage=true https://gist.githubusercontent.com/jrx/56e72ada489bf36646525c34fdaa7d63/raw/90df6046886e7c50fb18ea258a7be343727e944c/streamingWordCount-CNI.py"
 ```
 
 ## Test connection
