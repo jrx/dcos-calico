@@ -2,7 +2,7 @@
 
 ## Introduction
 
-DC/OS 1.10 adds support for CNI plugins (Marked as Preview) and Data Services (based on the DC/OS SDK) are able to use this CNI-Based virtual networks: https://docs.mesosphere.com/1.10/networking/virtual-networks/cni-plugins/)
+DC/OS has support for CNI pluginsand Data Services (based on the DC/OS SDK) are able to use this CNI-Based virtual networks: https://docs.mesosphere.com/1.12/networking/SDN/cni-plugins/)
 
 If you want use Calico, you can start out testing the community supported packages of etcd and calico. The guide for that is: https://docs.projectcalico.org/v2.6/getting-started/mesos/installation/dc-os/framework I tested these packages, but they were failing to deploy in DC/OS Strict mode and are created for demo purposes anyway.
 
